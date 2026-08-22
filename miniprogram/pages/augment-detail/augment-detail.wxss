@@ -1,0 +1,56 @@
+.page { padding: 24rpx 24rpx 60rpx; }
+
+.hero {
+  display: flex; gap: 18rpx; padding: 22rpx; margin-bottom: 22rpx;
+}
+.icon {
+  width: 140rpx; height: 140rpx; border-radius: 18rpx;
+  background: rgba(0,0,0,0.3); border: 2rpx solid rgba(251,191,36,0.35);
+  flex-shrink: 0;
+}
+.info { flex: 1; min-width: 0; }
+.name-row { display: flex; align-items: center; gap: 12rpx; flex-wrap: wrap; }
+.name { font-size: 36rpx; font-weight: 800; color: #f8fafc; }
+.grade { font-size: 26rpx; font-weight: 800; }
+.meta {
+  margin-top: 10rpx; display: flex; flex-wrap: wrap; gap: 12rpx 16rpx;
+  font-size: 22rpx; color: #94a3b8;
+}
+.rarity { font-weight: 700; }
+.perf { color: #f87171; font-weight: 700; }
+.tags { display: flex; flex-wrap: wrap; gap: 8rpx; margin-top: 12rpx; }
+.tag { font-size: 20rpx; padding: 2rpx 12rpx; border-radius: 8rpx; }
+
+.section-title {
+  font-size: 28rpx; font-weight: 700; color: #e2e8f0; margin: 20rpx 0 12rpx;
+}
+.desc, .tip, .champs {
+  padding: 18rpx 20rpx; font-size: 24rpx; line-height: 1.55; color: #cbd5e1;
+}
+.tip { color: #fde68a; }
+.champs { color: #7dd3fc; }
+
+.rel-list { display: flex; flex-direction: column; gap: 12rpx; }
+.rel { display: flex; align-items: center; gap: 14rpx; padding: 16rpx; }
+.r-icon { width: 72rpx; height: 72rpx; border-radius: 12rpx; background: rgba(0,0,0,0.25); }
+.r-body { flex: 1; min-width: 0; }
+.r-name { font-size: 26rpx; font-weight: 700; color: #f1f5f9; }
+.r-meta { margin-top: 6rpx; font-size: 20rpx; color: #94a3b8; display: flex; gap: 14rpx; }
+.r-grade { font-size: 24rpx; font-weight: 800; }
+
+.stages { padding: 12rpx 16rpx; }
+.st {
+  display: flex; flex-direction: row; align-items: center;
+  padding: 10rpx 0; border-bottom: 1rpx solid rgba(255,255,255,0.06);
+  font-size: 22rpx; color: #94a3b8;
+}
+.st:last-child { border-bottom: none; }
+.st-n { color: #e2e8f0; font-weight: 600; width: 180rpx; }
+.st-wr { color: #f87171; font-weight: 700; margin-right: 20rpx; }
+
+.hero-list { display: flex; flex-direction: column; gap: 10rpx; }
+.hh { display: flex; flex-direction: row; align-items: center; padding: 14rpx; gap: 14rpx; }
+.hh-i { width: 72rpx; height: 72rpx; border-radius: 12rpx; background: #12203a; }
+.hh-m { flex: 1; min-width: 0; }
+.hh-n { display: block; font-size: 26rpx; font-weight: 700; color: #f1f5f9; }
+.hh-s { display: block; margin-top: 4rpx; font-size: 20rpx; color: #94a3b8; }

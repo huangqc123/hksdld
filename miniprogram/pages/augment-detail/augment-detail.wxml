@@ -1,0 +1,71 @@
+<view class="page">
+  <view class="loading-wrap" wx:if="{{loading}}">加载中...</view>
+  <block wx:elif="{{aug}}">
+    <view class="hero card">
+      <image class="icon" src="{{aug.largeIcon || aug.smallIcon}}" mode="aspectFit" />
+      <view class="info">
+        <view class="name-row">
+          <text class="name">{{aug.name}}</text>
+          <text class="grade {{aug.gradeClass}}">{{aug.grade}}</text>
+        </view>
+        <view class="meta">
+          <text class="rarity" style="color:{{aug.rarityColor}}">{{aug.rarityName}}</text>
+          <text class="perf">胜率 {{aug.winRateText}}</text>
+          <text>登场 {{aug.pickRateText || aug.popText}}</text>
+        </view>
+        <view class="tags">
+          <text wx:for="{{aug.tags}}" wx:key="key" class="tag {{item.cls}}">{{item.label}}</text>
+          <text wx:for="{{aug.styleKeys}}" wx:for-item="sk" wx:key="*this" class="tag tag-normal">{{sk}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="section-title">效果说明</view>
+    <view class="desc card">{{aug.tooltip || aug.desc}}</view>
+
+    <view class="section-title">Tips</view>
+    <view class="tip card">💡 {{aug.tip}}</view>
+
+    <view class="section-title" wx:if="{{stages.length}}">各选牌阶段</view>
+    <view class="stages card" wx:if="{{stages.length}}">
+      <view class="st" wx:for="{{stages}}" wx:key="stage">
+        <text class="st-n">第 {{item.stage}} 次选牌</text>
+        <text class="st-wr">胜率 {{item.winRateText}}</text>
+        <text class="st-pr">登场 {{item.pickRateText}}</text>
+      </view>
+    </view>
+
+    <view class="section-title" wx:if="{{heroes.length}}">强势英雄</view>
+    <view class="hero-list" wx:if="{{heroes.length}}">
+      <view class="hh card" wx:for="{{heroes}}" wx:key="id">
+        <image class="hh-i" src="{{item.icon}}" mode="aspectFill" />
+        <view class="hh-m">
+          <text class="hh-n">{{item.name}}</text>
+           <text class="hh-s">胜率 {{item.winRateText}} · 样本 {{item.pickRateText}}</text>
+        </view>
+      </view>
+    </view>
+    <view class="champs card" wx:elif="{{aug.topChampNames}}">{{aug.topChampNames}}</view>
+
+    <view class="section-title" wx:if="{{related.length}}">同稀有度强化</view>
+    <view class="rel-list" wx:if="{{related.length}}">
+      <view
+        class="rel card"
+        wx:for="{{related}}"
+        wx:key="key"
+        data-key="{{item.key}}"
+        bindtap="goAug"
+      >
+        <image class="r-icon" src="{{item.smallIcon}}" mode="aspectFit" />
+        <view class="r-body">
+          <view class="r-name">{{item.name}}</view>
+          <view class="r-meta">
+            <text style="color:{{item.rarityColor}}">{{item.rarityName}}</text>
+            <text>HexScore {{item.perfText}}</text>
+          </view>
+        </view>
+        <text class="r-grade {{item.gradeClass}}">{{item.grade}}</text>
+      </view>
+    </view>
+  </block>
+</view>

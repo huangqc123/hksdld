@@ -1,0 +1,55 @@
+<view class="page">
+  <view class="hero">
+    <view class="hero-title">强化图鉴</view>
+    <view class="hero-sub">海克斯强化全局强度 · 白银 / 黄金 / 棱彩</view>
+  </view>
+
+  <view class="nav-row">
+    <view class="nav-btn" bindtap="goIndex">英雄推荐</view>
+    <view class="nav-btn active">强化图鉴</view>
+  </view>
+
+  <view class="search-box card">
+    <input
+      class="search-input"
+      placeholder="搜索强化名称"
+      placeholder-class="ph"
+      value="{{keyword}}"
+      bindinput="onSearch"
+    />
+  </view>
+
+  <view class="tabs">
+    <view
+      wx:for="{{tabs}}"
+      wx:key="key"
+      class="tab {{tab===item.key ? 'active' : ''}}"
+      data-key="{{item.key}}"
+      bindtap="onTab"
+    >{{item.label}}</view>
+  </view>
+
+  <view class="loading-wrap" wx:if="{{loading}}">加载中...</view>
+
+  <view class="empty-wrap" wx:elif="{{!displayList.length}}">没有匹配的强化</view>
+
+  <view class="list" wx:else>
+    <view class="item card" wx:for="{{displayList}}" wx:key="key">
+      <image class="icon" src="{{item.largeIcon || item.smallIcon}}" mode="aspectFit" lazy-load />
+      <view class="info">
+        <view class="name-row">
+          <text class="name">{{item.name}}</text>
+          <text class="rarity" style="color: {{item.rarityColor}}">{{item.rarityName}}</text>
+        </view>
+        <view class="stats">
+          <text>HexScore {{item.perfText}}</text>
+          <text>热度 {{item.popText}}</text>
+        </view>
+        <view class="desc">{{item.desc}}</view>
+        <view class="champs" wx:if="{{item.topChampNames}}">
+          强势英雄：{{item.topChampNames}}
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

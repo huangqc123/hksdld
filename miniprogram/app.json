@@ -1,0 +1,18 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/detail/detail",
+    "pages/augment-detail/augment-detail",
+    "pages/augments/augments"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#070d1a",
+    "navigationBarTitleText": "海克斯大乱斗",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#070d1a",
+    "backgroundTextStyle": "light"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}

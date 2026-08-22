@@ -1,0 +1,138 @@
+.page {
+  padding: 24rpx 24rpx 48rpx;
+}
+
+.hero-title {
+  font-size: 42rpx;
+  font-weight: 700;
+  color: #f0e6d2;
+}
+
+.hero-sub {
+  margin-top: 8rpx;
+  margin-bottom: 18rpx;
+  color: #c8aa6e;
+  font-size: 24rpx;
+}
+
+.nav-row {
+  display: flex;
+  gap: 16rpx;
+  margin-bottom: 18rpx;
+}
+
+.nav-btn {
+  flex: 1;
+  text-align: center;
+  padding: 18rpx 0;
+  border-radius: 14rpx;
+  background: rgba(255, 255, 255, 0.04);
+  color: #9aa4b2;
+  font-size: 26rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.06);
+}
+
+.nav-btn.active {
+  color: #0a1428;
+  background: linear-gradient(90deg, #c8aa6e, #f0e6d2);
+  font-weight: 700;
+}
+
+.search-box {
+  padding: 8rpx 24rpx;
+  margin-bottom: 18rpx;
+}
+
+.search-input {
+  height: 72rpx;
+  color: #f0e6d2;
+}
+
+.ph {
+  color: #6b7c93;
+}
+
+.tabs {
+  display: flex;
+  gap: 12rpx;
+  margin-bottom: 18rpx;
+}
+
+.tab {
+  flex: 1;
+  text-align: center;
+  padding: 14rpx 0;
+  border-radius: 999rpx;
+  color: #9aa4b2;
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 24rpx;
+}
+
+.tab.active {
+  color: #0a1428;
+  background: linear-gradient(90deg, #c8aa6e, #f0e6d2);
+  font-weight: 700;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+}
+
+.item {
+  display: flex;
+  gap: 16rpx;
+  padding: 18rpx;
+}
+
+.icon {
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 14rpx;
+  background: rgba(0, 0, 0, 0.25);
+  flex-shrink: 0;
+}
+
+.info {
+  flex: 1;
+  min-width: 0;
+}
+
+.name-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.name {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #f5f0e6;
+}
+
+.rarity {
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
+.stats {
+  margin-top: 8rpx;
+  display: flex;
+  gap: 16rpx;
+  color: #c5d0e0;
+  font-size: 22rpx;
+}
+
+.desc {
+  margin-top: 8rpx;
+  color: #9aa8bc;
+  font-size: 22rpx;
+  line-height: 1.45;
+}
+
+.champs {
+  margin-top: 8rpx;
+  color: #c8aa6e;
+  font-size: 20rpx;
+}

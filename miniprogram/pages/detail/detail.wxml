@@ -1,0 +1,127 @@
+<view class="page">
+  <view class="header card" wx:if="{{champion}}">
+    <image class="avatar" src="{{champion.icon}}" mode="aspectFill" />
+    <view class="header-info">
+      <view class="name">{{champion.name}}</view>
+      <view class="title">{{champion.title}}</view>
+      <view class="meta">
+        <text wx:if="{{stats.grade}}" class="{{stats.gradeClass}}" style="font-weight:800">{{stats.grade}}</text>
+        <text wx:if="{{stats.winRateText}}">胜率 {{stats.winRateText}}</text>
+        <text wx:if="{{stats.tierText}}" class="tier {{stats.tierClass}}">{{stats.tierText}} 级</text>
+        <text>版本 {{patch}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="loading-wrap" wx:if="{{loading}}">强化数据加载中...</view>
+
+  <view class="empty-wrap" wx:elif="{{!suited.length && !combos.length}}">
+    <view>暂未获取到强化数据</view>
+    <button class="retry-btn" size="mini" bindtap="reload">重新加载</button>
+  </view>
+
+  <block wx:else>
+    <view class="note card">
+      数据来自 Hexdata 艾欧尼亚 Queue 2400 样本。稀有度局内随机。下面为该英雄<strong>高分强化</strong>与<strong>推荐组合</strong>。
+      <text class="note-sub">默认要求至少 1000 场且达到英雄总样本的 0.5%；射手会排除近战转职、坦克装备任务和重装成长强化。组合按单张 HexScore 启发式生成，不代表组合胜率。</text>
+    </view>
+
+    <!-- 推荐组合 -->
+    <view class="section-title">推荐组合</view>
+    <view class="section-desc">按单张国服 HexScore 组合，刷到对应牌可优先考虑</view>
+
+    <view class="combos" wx:if="{{combos.length}}">
+      <view class="combo card" wx:for="{{combos}}" wx:key="id">
+        <view class="combo-top">
+          <view class="combo-title-row">
+            <text class="combo-rank">#{{item.rank}}</text>
+            <text class="combo-title">{{item.title}}</text>
+          </view>
+          <view class="combo-metrics">
+            <view class="metric">
+              <text class="metric-val">{{item.avgPerfText}}</text>
+              <text class="metric-label">均 HexScore</text>
+            </view>
+            <view class="metric">
+              <text class="metric-val">{{item.avgPopText}}</text>
+              <text class="metric-label">均选取</text>
+            </view>
+            <view class="metric">
+              <text class="metric-val">{{item.matchedCount}}/{{item.cardCount}}</text>
+              <text class="metric-label">专属适配</text>
+            </view>
+          </view>
+        </view>
+        <view class="combo-tip">{{item.tip}}</view>
+        <view class="combo-cards">
+          <view class="c-card" wx:for="{{item.cards}}" wx:for-item="card" wx:key="key">
+            <image class="c-icon" src="{{card.smallIcon}}" mode="aspectFit" />
+            <view class="c-name">{{card.name}}</view>
+            <view class="c-rarity" style="color: {{card.rarityColor}}">{{card.rarityName}}</view>
+            <view class="c-perf">{{card.winRateText || card.perfText}}</view>
+          </view>
+        </view>
+      </view>
+    </view>
+    <view class="empty-wrap sm" wx:else>组合生成中数据不足</view>
+
+    <!-- 适合的牌 -->
+    <view class="section-title mt">适合的强化</view>
+    <view class="section-desc">
+      共 {{suitedCount}} 张
+      <text wx:if="{{matchedCount}}">（{{matchedCount}} 张有该英雄统计）</text>
+    </view>
+
+    <view class="filter-tabs">
+      <view
+        wx:for="{{filterTabs}}"
+        wx:key="key"
+        class="ftab {{filter===item.key ? 'active' : ''}}"
+        data-key="{{item.key}}"
+        bindtap="onFilter"
+      >{{item.label}}</view>
+    </view>
+
+    <view class="sort-row">
+      <view
+        class="sort-chip {{sortKey==='score' ? 'on' : ''}}"
+        data-key="score"
+        bindtap="onSort"
+      >按强度</view>
+      <view
+        class="sort-chip {{sortKey==='popular' ? 'on' : ''}}"
+        data-key="popular"
+        bindtap="onSort"
+      >按登场</view>
+      <view
+        class="sort-chip {{sortKey==='rarity' ? 'on' : ''}}"
+        data-key="rarity"
+        bindtap="onSort"
+      >按稀有度</view>
+    </view>
+
+    <view class="aug-list" wx:if="{{displayList.length}}">
+      <view class="aug-item card" wx:for="{{displayList}}" wx:key="key">
+        <image class="aug-icon" src="{{item.largeIcon || item.smallIcon || item.icon}}" mode="aspectFit" />
+        <view class="aug-body">
+          <view class="aug-name-row">
+            <text class="aug-name">{{item.name}}</text>
+            <text class="rarity" style="color: {{item.rarityColor}}">{{item.rarityName}}</text>
+            <text wx:if="{{item.matched}}" class="tag-match">适合</text>
+          </view>
+          <view class="aug-stats">
+            <text class="stat-strong">胜率 {{item.winRateText || item.perfText}}</text>
+            <text>登场 {{item.pickRateText || item.popText}}</text>
+            <text>样本 {{item.playText}}</text>
+          </view>
+          <view class="aug-desc">{{item.desc}}</view>
+        </view>
+      </view>
+    </view>
+    <view class="empty-wrap sm" wx:else>该分类下暂无数据</view>
+  </block>
+
+  <view class="footer-note">
+     数据 Hexdata 艾欧尼亚样本 · 静态资源 Data Dragon / CommunityDragon · 非官方工具
+  </view>
+</view>

@@ -1,0 +1,59 @@
+page {
+  min-height: 100%;
+  background: #070d1a;
+  color: #e8eef8;
+  font-size: 28rpx;
+  box-sizing: border-box;
+}
+
+.container {
+  padding: 24rpx;
+  box-sizing: border-box;
+}
+
+.card {
+  background: linear-gradient(165deg, rgba(28, 42, 72, 0.96), rgba(12, 20, 38, 0.98));
+  border: 1rpx solid rgba(120, 160, 255, 0.12);
+  border-radius: 20rpx;
+  box-shadow: 0 10rpx 28rpx rgba(0, 0, 0, 0.28);
+}
+
+.flex-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.ellipsis {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.loading-wrap,
+.empty-wrap {
+  padding: 100rpx 40rpx;
+  text-align: center;
+  color: #7f8ea3;
+}
+
+.g-sss { color: #f0abfc; }
+.g-ss { color: #c4b5fd; }
+.g-s { color: #f87171; }
+.g-a { color: #fbbf24; }
+.g-b { color: #60a5fa; }
+.g-c { color: #94a3b8; }
+
+.tier-s { color: #f87171; }
+.tier-a { color: #fbbf24; }
+.tier-b { color: #60a5fa; }
+.tier-c { color: #34d399; }
+.tier-d { color: #94a3b8; }
+
+.tag-core { background: rgba(248, 113, 113, 0.18); color: #fca5a5; }
+.tag-special { background: rgba(96, 165, 250, 0.18); color: #93c5fd; }
+.tag-solid { background: rgba(52, 211, 153, 0.15); color: #6ee7b7; }
+.tag-trap { background: rgba(251, 191, 36, 0.15); color: #fcd34d; }
+.tag-rare { background: rgba(192, 132, 252, 0.18); color: #d8b4fe; }
+.tag-t { background: rgba(255, 255, 255, 0.08); color: #cbd5e1; }
+.tag-normal { background: rgba(255, 255, 255, 0.06); color: #94a3b8; }

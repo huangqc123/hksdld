@@ -1,0 +1,215 @@
+<view class="page">
+  <view class="header">
+    <view class="header-title">海克斯大乱斗</view>
+    <view class="header-sub" wx:if="{{patch}}">版本 {{patch}} · 强化 / 英雄 / 装备</view>
+    <view class="header-sub" wx:else>强化 · 英雄 · 装备查询</view>
+    <view class="stats" wx:if="{{summary}}">
+      <view class="stat"><text class="n">{{summary.heroes}}</text><text class="l">英雄</text></view>
+      <view class="stat"><text class="n c2">{{summary.augments}}</text><text class="l">强化</text></view>
+      <view class="stat"><text class="n c3">{{summary.core}}</text><text class="l">核心</text></view>
+      <view class="stat"><text class="n c4">{{summary.trap}}</text><text class="l">陷阱</text></view>
+    </view>
+  </view>
+
+  <view class="search card">
+    <input
+      class="search-input"
+      placeholder="{{searchPlaceholder}}"
+      placeholder-class="ph"
+      value="{{keyword}}"
+      confirm-type="search"
+      bindinput="onSearch"
+    />
+  </view>
+
+  <!-- 四个主 Tab：普通 flex，不滚动 -->
+  <view class="tabs">
+    <view
+      wx:for="{{mainTabs}}"
+      wx:key="key"
+      class="tab {{mainTab===item.key ? 'on' : ''}}"
+      data-key="{{item.key}}"
+      bindtap="onMainTab"
+    >{{item.label}}</view>
+  </view>
+
+  <view class="loading-wrap" wx:if="{{loading}}">加载中...</view>
+
+  <!-- 英雄 -->
+  <block wx:elif="{{mainTab==='heroes'}}">
+    <scroll-view scroll-x class="h-scroll" enhanced show-scrollbar="{{false}}">
+      <view class="h-scroll-inner">
+        <view
+          wx:for="{{roleTabs}}"
+          wx:key="key"
+          class="chip {{role===item.key ? 'on' : ''}}"
+          data-key="{{item.key}}"
+          bindtap="onRole"
+        >{{item.label}}</view>
+      </view>
+    </scroll-view>
+
+    <view class="toolbar">
+      <view class="tchip {{heroSort==='rank'?'on':''}}" data-key="rank" bindtap="onHeroSort">强度</view>
+      <view class="tchip {{heroSort==='winRate'?'on':''}}" data-key="winRate" bindtap="onHeroSort">胜率</view>
+      <view class="tchip {{heroSort==='pickRate'?'on':''}}" data-key="pickRate" bindtap="onHeroSort">登场</view>
+      <view class="tlink" bindtap="toggleHeroView">{{heroGrid ? '切列表' : '切宫格'}}</view>
+    </view>
+
+    <view class="empty-wrap" wx:if="{{!heroes.length}}">没有匹配英雄</view>
+
+    <view class="grid" wx:elif="{{heroGrid}}">
+      <view
+        class="g-item"
+        wx:for="{{heroes}}"
+        wx:key="key"
+        data-id="{{item.id}}"
+        data-key="{{item.key}}"
+        data-name="{{item.name}}"
+        bindtap="goChamp"
+      >
+        <text class="g-grade {{item.gradeClass}}">{{item.grade}}</text>
+        <image class="g-icon" src="{{item.icon}}" mode="aspectFill" lazy-load />
+        <text class="g-name">{{item.name}}</text>
+        <text class="g-wr">{{item.metricText}}</text>
+      </view>
+    </view>
+
+    <view class="list" wx:else>
+      <view
+        class="l-item card"
+        wx:for="{{heroes}}"
+        wx:key="key"
+        data-id="{{item.id}}"
+        data-key="{{item.key}}"
+        data-name="{{item.name}}"
+        bindtap="goChamp"
+      >
+        <text class="l-rank">{{item.rank}}</text>
+        <image class="l-icon" src="{{item.icon}}" mode="aspectFill" lazy-load />
+        <view class="l-main">
+          <view class="l-row">
+            <text class="l-name">{{item.name}}</text>
+            <text class="g-grade {{item.gradeClass}}">{{item.grade}}</text>
+          </view>
+          <view class="l-sub">{{item.title}} · {{item.roleLabel}}</view>
+          <view class="l-meta">胜率 {{item.winRateText}} · 登场 {{item.pickRateText}} · {{item.playText}}</view>
+        </view>
+      </view>
+    </view>
+  </block>
+
+  <!-- 强化 -->
+  <block wx:elif="{{mainTab==='augments'}}">
+    <scroll-view scroll-x class="h-scroll" enhanced show-scrollbar="{{false}}">
+      <view class="h-scroll-inner">
+        <view
+          wx:for="{{rarityTabs}}"
+          wx:key="key"
+          class="chip {{augRarity===item.key && !augTag ? 'on' : ''}}"
+          data-key="{{item.key}}"
+          bindtap="onAugRarity"
+        >{{item.label}}</view>
+        <view class="chip {{augTag==='core'?'on':''}}" data-key="core" bindtap="onAugTag">核心</view>
+        <view class="chip {{augTag==='special'?'on':''}}" data-key="special" bindtap="onAugTag">特殊</view>
+        <view class="chip {{augTag==='trap'?'on':''}}" data-key="trap" bindtap="onAugTag">陷阱</view>
+      </view>
+    </scroll-view>
+
+    <view class="toolbar">
+      <view class="tchip {{augSort==='perf'?'on':''}}" data-key="perf" bindtap="onAugSort">强度</view>
+      <view class="tchip {{augSort==='pop'?'on':''}}" data-key="pop" bindtap="onAugSort">登场</view>
+      <view class="tchip {{augSort==='grade'?'on':''}}" data-key="grade" bindtap="onAugSort">评级</view>
+      <text class="count">{{augCount}} 张</text>
+    </view>
+
+    <view class="empty-wrap" wx:if="{{!augments.length}}">没有匹配强化</view>
+    <view class="alist" wx:else>
+      <view
+        class="a-item card"
+        wx:for="{{augments}}"
+        wx:key="key"
+        data-key="{{item.key}}"
+        bindtap="goAug"
+      >
+        <image class="a-icon" src="{{item.largeIcon || item.smallIcon}}" mode="aspectFit" lazy-load />
+        <view class="a-main">
+          <view class="a-row">
+            <text class="a-name">{{item.name}}</text>
+            <text class="a-r" style="color:{{item.rarityColor}}">{{item.rarityName}}</text>
+            <text class="g-grade {{item.gradeClass}}">{{item.grade}}</text>
+          </view>
+          <view class="a-tags">
+            <text wx:for="{{item.tags}}" wx:for-item="tg" wx:key="key" class="tag {{tg.cls}}">{{tg.label}}</text>
+          </view>
+          <view class="a-desc">{{item.desc}}</view>
+          <view class="a-meta">
+            <text class="a-perf">胜率 {{item.winRateText || item.perfText}}</text>
+            <text>登场 {{item.pickRateText || item.popText}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </block>
+
+  <!-- 搭配 -->
+  <block wx:elif="{{mainTab==='loadouts'}}">
+    <view class="tip">按强化效果归类的流派池（数据来自强化描述关键词）</view>
+    <view class="empty-wrap" wx:if="{{!loadouts.length}}">暂无搭配数据</view>
+    <view class="load-list" wx:else>
+      <view class="load card" wx:for="{{loadouts}}" wx:key="id">
+        <view class="load-h">
+          <text class="load-name">{{item.name}}</text>
+          <text class="load-n">{{item.count}} 张 · 均分 {{item.avgPerfText}}</text>
+        </view>
+        <view class="load-d">{{item.desc}}</view>
+        <scroll-view scroll-x class="h-scroll" enhanced show-scrollbar="{{false}}">
+          <view class="h-scroll-inner">
+            <view
+              class="la"
+              wx:for="{{item.cards}}"
+              wx:for-item="card"
+              wx:key="key"
+              data-key="{{card.key}}"
+              catchtap="goAug"
+            >
+              <image class="la-i" src="{{card.smallIcon}}" mode="aspectFit" />
+              <text class="la-n">{{card.name}}</text>
+            </view>
+          </view>
+        </scroll-view>
+      </view>
+    </view>
+  </block>
+
+  <!-- 装备 -->
+  <block wx:elif="{{mainTab==='items'}}">
+    <scroll-view scroll-x class="h-scroll" enhanced show-scrollbar="{{false}}">
+      <view class="h-scroll-inner">
+        <view
+          wx:for="{{itemCats}}"
+          wx:key="key"
+          class="chip {{itemCat===item.key ? 'on' : ''}}"
+          data-key="{{item.key}}"
+          bindtap="onItemCat"
+        >{{item.label}}</view>
+      </view>
+    </scroll-view>
+    <view class="empty-wrap" wx:if="{{!items.length}}">没有匹配装备</view>
+    <view class="ilist" wx:else>
+      <view class="i-item card" wx:for="{{items}}" wx:key="id">
+        <image class="i-icon" src="{{item.icon}}" mode="aspectFit" lazy-load />
+        <view class="i-main">
+          <view class="i-row">
+            <text class="i-name">{{item.name}}</text>
+            <text class="i-cat">{{item.catLabel}}</text>
+            <text class="i-g">{{item.price}}G</text>
+          </view>
+          <view class="i-desc">{{item.plaintext || item.description}}</view>
+        </view>
+      </view>
+    </view>
+  </block>
+
+  <view class="foot">国服统计 Hexdata 艾欧尼亚样本 · 静态资源 Data Dragon / CommunityDragon · 非官方</view>
+</view>
