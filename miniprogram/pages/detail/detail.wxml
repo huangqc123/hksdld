@@ -8,7 +8,6 @@
         <text wx:if="{{stats.grade}}" class="{{stats.gradeClass}}" style="font-weight:800">{{stats.grade}}</text>
         <text wx:if="{{stats.winRateText}}">胜率 {{stats.winRateText}}</text>
         <text wx:if="{{stats.tierText}}" class="tier {{stats.tierClass}}">{{stats.tierText}} 级</text>
-        <text>版本 {{patch}}</text>
       </view>
     </view>
   </view>
@@ -22,7 +21,7 @@
 
   <block wx:else>
     <view class="note card">
-      数据来自 Hexdata 艾欧尼亚 Queue 2400 样本。稀有度局内随机。下面为该英雄<strong>高分强化</strong>与<strong>推荐组合</strong>。
+      稀有度局内随机。下面为该英雄<strong>高分强化</strong>与<strong>推荐组合</strong>。
       <text class="note-sub">默认要求至少 1000 场且达到英雄总样本的 0.5%；射手会排除近战转职、坦克装备任务和重装成长强化。组合按单张 HexScore 启发式生成，不代表组合胜率。</text>
     </view>
 
@@ -120,8 +119,4 @@
     </view>
     <view class="empty-wrap sm" wx:else>该分类下暂无数据</view>
   </block>
-
-  <view class="footer-note">
-     数据 Hexdata 艾欧尼亚样本 · 静态资源 Data Dragon / CommunityDragon · 非官方工具
-  </view>
 </view>

@@ -58,10 +58,10 @@ Build ID: hexdata-2026-08-19-2a6a2393a083
 强化: 208
 ```
 
-Hexdata 公布的样本口径：
+Hexdata 当前构建公布的样本口径：
 
 ```text
-艾欧尼亚 Queue 2400 活跃玩家关系网冻结样本
+国服 Queue 2400 多大区冻结样本
 只统计正常结束且超过 4 分钟的比赛
 非随机抽样，不代表腾讯国服全部对局
 ```
@@ -81,6 +81,7 @@ https://hexdata.com.cn/methodology
 /augments                       强化全局排行
 /data/heroes/{championId}.json  完整英雄强化数据
 /augment/{id}-{slug}            强化详情公开摘要和适配英雄
+/data/ai-summary.json           当前 Build ID、Patch、日期和英雄别名
 ```
 
 重要授权边界：Hexdata 方法页允许个人查询和注明来源的引用，但明确说明批量转载数据集或商业再分发需要另行取得许可。正式商业上线前应联系数据方取得 API 或快照授权。
@@ -114,7 +115,7 @@ Data Dragon 只负责静态资料，不能据此声称数据来自国服对局�
 域名：
 
 ```text
-https://raw.communitydragon.org/latest
+https://raw.communitydragon.org/{reportPatch}
 ```
 
 用途：
@@ -138,6 +139,8 @@ Hexdata 强化总数: 208
 成功关联图标: 208 / 208
 CommunityDragon 通用描述直接覆盖: 约 91 / 208
 ```
+
+项目先读取 Hexdata `reportPatch`，再固定使用相同 Patch 的 CommunityDragon 目录。固定目录暂时不可用时，只有在 `latest/content-metadata.json` 仍确认属于同一 Patch 时才允许回退，禁止跨 Patch 混用资源。
 
 缺少通用描述时，强化详情页按需读取 Hexdata 公开效果摘要，不在首页启动时批量请求 208 个详情页面。
 
@@ -262,7 +265,7 @@ games >= heroGames * 0.005
 
 对 Data Dragon 标签包含 `Marksman` 的英雄，默认排除明显改变射手核心定位的强化。
 
-当前黑名单位于：
+当前规则位于：
 
 ```js
 MARKSMAN_CONFLICT_AUGMENTS
@@ -270,19 +273,19 @@ MARKSMAN_CONFLICT_AUGMENTS
 
 当前包含：
 
-| 强化 ID | 类型 |
-|---:|---|
-| `1041` | 重装巨人化 |
-| `1056` | 法力坦克化 |
-| `1134` | 近战转职 |
-| `1152` | 心之钢任务 |
-| `1181` | 生命值伤害流 |
-| `1319` | 献祭坦克升级 |
-| `1353` | 坦克化成长 |
-| `1361` | 坦克装备任务 |
-| `2091` | 重装战士技能 |
-| `2102` | 最大生命值伤害 |
-| `2143` | 重装战士升级 |
+| 稳定强化键 | 类型 |
+|---|---|
+| `ARAM_Goliath` | 重装巨人化 |
+| `ARAM_MindtoMatter` | 法力坦克化 |
+| `ARAM_DrawYourSword` | 近战转职 |
+| `ARAM_Quest_SteelYourHeart` | 心之钢任务 |
+| `ARAM_HeavyHitter` | 生命值伤害流 |
+| `ARAM_Upgrade_Immolate` | 献祭坦克升级 |
+| `ARAM_TankEngine` | 坦克化成长 |
+| `ARAM_Quest_VoidImmolation` | 坦克装备任务 |
+| `EndlessDecimation` | 重装战士技能 |
+| `PressureCooker` | 最大生命值伤害 |
+| `Upgrade_SunderedSky` | 重装战士升级 |
 
 该过滤只作用于射手。坦克和战士仍然可以正常获得这些推荐。
 
@@ -424,12 +427,47 @@ MARKSMAN_CONFLICT_AUGMENTS
 - 英雄榜请求去重；
 - 强化榜请求去重；
 - 装备请求去重；
-- 30 分钟内存缓存；
+- Hexdata manifest 缓存 5 分钟；
+- 业务数据内存缓存 15 分钟；
+- 缓存通过 Hexdata `buildId` 自动失效，同 Patch 重新构建也能刷新；
 - 下拉刷新传递 `force`；
 - 初始化失败后清除 rejected `bootPromise`，允许重新初始化；
 - 请求失败或解析为空时不写入成功缓存。
 
 页面刷新时不要直接操作 `api.js` 的模块级缓存变量，应通过各 API 的 `force` 参数刷新。
+
+## 9.1 自动跟版机制
+
+当前以下更新通常不需要重新发布小程序：
+
+- Hexdata 同 Patch 更新数据日期或重新生成 Build；
+- Hexdata 发布新的 Patch 数据；
+- Data Dragon 更新英雄、称号、职业标签、图片和装备；
+- KIWI 强化池增删强化；
+- 强化名称、稀有度和图标发生静态资源更新；
+- Hexdata `heroAliases` 增加新英雄常用别名。
+
+自动更新流程：
+
+1. 请求 `https://hexdata.com.cn/data/ai-summary.json`；
+2. 校验 `schemaVersion`、`buildId`、`reportPatch` 和 `reportDate`；
+3. 使用 `buildId` 判断缓存是否需要失效；
+4. 使用 `reportPatch` 固定 CommunityDragon 版本目录；
+5. 校验 CommunityDragon Queue 2400 仍为 `ARAM: Mayhem / kARAM`；
+6. 精确选择 `modeName === "KIWI"`，不会误用 `KIWI_JADE`；
+7. 校验 KIWI 池数量和 Hexdata 强化静态资源关联率；
+8. 未知稀有度不再默认为白银，而是拒绝进入正常分组；
+9. 数据构建读取期间若 `buildId` 变化，则丢弃该批英雄详情，避免混合构建。
+
+仍可能需要发版的情况：
+
+- Hexdata 修改 `schemaVersion` 或核心 JSON 字段；
+- Hexdata、Data Dragon 或 CommunityDragon 更换到全新域名；
+- Riot 更改 Queue 2400、`KIWI` 等模式语义；
+- 新强化改变射手核心定位，需要人工加入冲突规则；
+- 页面要支持全新的强化稀有度或全新业务展示类型。
+
+这些属于数据契约或产品语义变化，不应通过猜测自动兼容。
 
 ## 10. 页面数据契约
 

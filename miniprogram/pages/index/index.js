@@ -18,7 +18,6 @@ const PLACEHOLDERS = {
 Page({
   data: {
     loading: true,
-    patch: '',
     summary: null,
     keyword: '',
     searchPlaceholder: PLACEHOLDERS.heroes,
@@ -87,7 +86,6 @@ Page({
 
       this.setData({
         loading: false,
-        patch: home.patch,
         summary: home.summary
       })
       this.applyHeroes()

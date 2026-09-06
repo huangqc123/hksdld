@@ -6,7 +6,6 @@ Page({
     loading: true,
     champion: null,
     stats: null,
-    patch: '',
     combos: [],
     suited: [],
     displayList: [],
@@ -66,7 +65,6 @@ Page({
           grade: res.stats.grade,
           gradeClass: res.stats.gradeClass
         } : null),
-        patch: res.patch,
         combos: res.combos || [],
         suited: this._suited,
         matchedCount: res.matchedCount || 0,

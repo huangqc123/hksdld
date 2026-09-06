@@ -5,7 +5,15 @@ const meta = require('./meta')
 
 const DDRAGON = 'https://ddragon.leagueoflegends.com'
 const HEXDATA = 'https://hexdata.com.cn'
-const CDRAGON = 'https://raw.communitydragon.org/latest'
+const CDRAGON_ORIGIN = 'https://raw.communitydragon.org'
+
+const CACHE_TTL = 15 * 60 * 1000
+const MANIFEST_TTL = 5 * 60 * 1000
+const MIN_AUGMENT_GAMES = 1000
+const MIN_HERO_SAMPLE_RATIO = 0.005
+const MIN_KIWI_POOL_SIZE = 100
+const MIN_AUGMENT_LINK_RATE = 0.9
+const SUPPORTED_HEXDATA_SCHEMAS = ['hexdata-ai-summary-v1']
 
 let cachedVersion = ''
 let cachedChampions = null
@@ -20,6 +28,11 @@ let aramListPending = null
 let itemsCache = null
 let itemsAt = 0
 let itemsPending = null
+let hexManifestCache = null
+let hexManifestAt = 0
+let hexManifestPending = null
+let aramListBuildId = ''
+let augmentsBuildId = ''
 
 const RARITY_MAP = {
   1: { key: 'silver', name: '白银', color: '#c0c9d6', order: 1 },
@@ -28,17 +41,17 @@ const RARITY_MAP = {
 }
 
 const MARKSMAN_CONFLICT_AUGMENTS = {
-  1041: '重装巨人化',
-  1056: '法力坦克化',
-  1134: '近战转职',
-  1152: '心之钢任务',
-  1181: '生命值伤害流',
-  1319: '献祭坦克升级',
-  1353: '坦克化成长',
-  1361: '坦克装备任务',
-  2091: '重装战士技能',
-  2102: '最大生命值伤害',
-  2143: '重装战士升级'
+  ARAM_Goliath: '重装巨人化',
+  ARAM_MindtoMatter: '法力坦克化',
+  ARAM_DrawYourSword: '近战转职',
+  ARAM_Quest_SteelYourHeart: '心之钢任务',
+  ARAM_HeavyHitter: '生命值伤害流',
+  ARAM_Upgrade_Immolate: '献祭坦克升级',
+  ARAM_TankEngine: '坦克化成长',
+  ARAM_Quest_VoidImmolation: '坦克装备任务',
+  EndlessDecimation: '重装战士技能',
+  PressureCooker: '最大生命值伤害',
+  Upgrade_SunderedSky: '重装战士升级'
 }
 
 function champIcon(version, id) {
@@ -92,28 +105,30 @@ function parseHexdataMeta(html) {
     patch: (text.match(/Patch\s+([0-9.]+)/i) || [])[1] || '',
     dataDate: (text.match(/hexdata-report-date" content="([^"]+)/i) || [])[1] || '',
     buildId: (text.match(/hexdata-build-id" content="([^"]+)/i) || [])[1] || '',
-    source: 'Hexdata 艾欧尼亚 Queue 2400 样本'
+    source: 'Hexdata 国服 Queue 2400 样本'
   }
 }
 
-function cdragonIcon(path) {
+function cdragonIcon(base, path) {
   const clean = String(path || '')
     .replace(/^\/lol-game-data\/assets\//i, '')
     .replace(/^\//, '')
     .toLowerCase()
-  return clean ? `${CDRAGON}/plugins/rcp-be-lol-game-data/global/default/${clean}` : ''
+  return clean ? `${base}/plugins/rcp-be-lol-game-data/global/default/${clean}` : ''
 }
 
 function rarityFromClient(rarity) {
+  if (rarity === 'kSilver') return 1
   if (rarity === 'kPrismatic') return 8
   if (rarity === 'kGold') return 4
-  return 1
+  return 0
 }
 
 function rarityFromHexdata(rarity) {
+  if (rarity === '白银') return 1
   if (rarity === '棱彩') return 8
   if (rarity === '黄金') return 4
-  return 1
+  return 0
 }
 
 function absoluteUrl(base, path) {
@@ -121,6 +136,73 @@ function absoluteUrl(base, path) {
   if (!value) return ''
   if (/^https?:\/\//i.test(value)) return value
   return `${base}${value.charAt(0) === '/' ? '' : '/'}${value}`
+}
+
+function patchFromVersion(version) {
+  return (String(version || '').match(/^(\d+\.\d+)/) || [])[1] || ''
+}
+
+function tierFromRank(index, total) {
+  const percentile = total ? (index + 1) / total : 1
+  if (percentile <= 0.15) return 1
+  if (percentile <= 0.35) return 2
+  if (percentile <= 0.65) return 3
+  if (percentile <= 0.85) return 4
+  return 5
+}
+
+function slugFromUrl(url) {
+  return (String(url || '').match(/\/hero\/\d+-([^/?#]+)/) || [])[1] || ''
+}
+
+async function fetchHexManifest(force) {
+  const now = Date.now()
+  if (!force && hexManifestCache && now - hexManifestAt < MANIFEST_TTL) return hexManifestCache
+  if (hexManifestPending) return hexManifestPending
+  hexManifestPending = (async () => {
+    const raw = await request(`${HEXDATA}/data/ai-summary.json`)
+    if (!raw || SUPPORTED_HEXDATA_SCHEMAS.indexOf(raw.schemaVersion) < 0) {
+      throw new Error(`不支持的 Hexdata schema: ${(raw && raw.schemaVersion) || 'missing'}`)
+    }
+    if (!raw.buildId || !raw.reportPatch || !raw.reportDate) {
+      throw new Error('Hexdata manifest 缺少版本信息')
+    }
+    return {
+      schemaVersion: raw.schemaVersion,
+      buildId: raw.buildId,
+      patch: raw.reportPatch,
+      dataDate: raw.reportDate,
+      generatedAt: raw.generatedAt || '',
+      heroAliases: raw.heroAliases || [],
+      source: 'Hexdata 国服 Queue 2400 样本'
+    }
+  })()
+  try {
+    const result = await hexManifestPending
+    hexManifestCache = result
+    hexManifestAt = Date.now()
+    return result
+  } finally {
+    hexManifestPending = null
+  }
+}
+
+async function resolveCdragonSource(reportPatch) {
+  const base = `${CDRAGON_ORIGIN}/${reportPatch}`
+  try {
+    const metadata = await request(`${base}/content-metadata.json`)
+    const actualPatch = patchFromVersion(metadata && metadata.version)
+    if (actualPatch !== reportPatch) throw new Error('fixed patch mismatch')
+    return { base, version: metadata.version, patch: actualPatch }
+  } catch (e) {
+    const latestBase = `${CDRAGON_ORIGIN}/latest`
+    const metadata = await request(`${latestBase}/content-metadata.json`)
+    const actualPatch = patchFromVersion(metadata && metadata.version)
+    if (actualPatch !== reportPatch) {
+      throw new Error(`CommunityDragon 版本不匹配: ${actualPatch || 'unknown'} != ${reportPatch}`)
+    }
+    return { base: latestBase, version: metadata.version, patch: actualPatch }
+  }
 }
 
 async function getLatestVersion(force) {
@@ -136,15 +218,26 @@ async function initStaticData(force) {
   }
   if (staticDataPending) return staticDataPending
   staticDataPending = (async () => {
-    const version = await getLatestVersion(force)
+    const [version, manifest] = await Promise.all([
+      getLatestVersion(force),
+      fetchHexManifest(force).catch(() => null)
+    ])
     const champRes = await request(`${DDRAGON}/cdn/${version}/data/zh_CN/champion.json`)
+    const remoteAliases = {}
+    ;((manifest && manifest.heroAliases) || []).forEach(row => {
+      remoteAliases[Number(row.id)] = row
+    })
     const champions = []
     const map = {}
     const data = champRes.data || {}
     Object.keys(data).forEach(key => {
       const c = data[key]
       const sm = searchMeta[c.id] || {}
-      const nicknames = sm.nicknames || getNicknames(c.id)
+      const remote = remoteAliases[Number(c.key)] || {}
+      const nicknames = Array.from(new Set([].concat(
+        sm.nicknames || getNicknames(c.id),
+        remote.alternateNames || []
+      ).filter(Boolean)))
       const item = {
         id: c.id,
         key: Number(c.key),
@@ -192,7 +285,7 @@ function parseHeroRows(html) {
   return list.map((row, index) => Object.assign(row, {
     pickRate: matches ? row.play / matches : 0,
     rank: index + 1,
-    tier: index < 10 ? 1 : index < 30 ? 2 : index < 70 ? 3 : index < 120 ? 4 : 5
+    tier: tierFromRank(index, list.length)
   }))
 }
 
@@ -214,20 +307,21 @@ function parseAugmentRows(html) {
 
 function parseChampionAugmentJson(payload, champ, globalById, heroGames) {
   const isMarksman = (champ.tags || []).indexOf('Marksman') >= 0
-  const minGames = Math.max(1000, Math.ceil((Number(heroGames) || 0) * 0.005))
+  const minGames = Math.max(MIN_AUGMENT_GAMES, Math.ceil((Number(heroGames) || 0) * MIN_HERO_SAMPLE_RATIO))
   return ((payload && payload.augments) || []).map(raw => {
     const id = Number(raw.augmentId)
     const base = globalById[id] || {}
-    const rarity = rarityFromHexdata(raw.rarity)
+    const rarity = rarityFromHexdata(raw.rarity) || Number(base.rarity) || 0
     const rInfo = rarityInfo(rarity)
     const score = Number(raw.hexScore) || 0
     const winRate = Number(raw.pairWinRate) || 0
     const pickRate = Number(raw.pickRate) || 0
     const play = Number(raw.games) || 0
-    const conflictLabel = isMarksman ? MARKSMAN_CONFLICT_AUGMENTS[id] || '' : ''
+    const stableKey = base.key || String(id)
+    const conflictLabel = isMarksman ? MARKSMAN_CONFLICT_AUGMENTS[stableKey] || '' : ''
     return Object.assign({}, base, {
       id,
-      key: base.key || String(id),
+      key: stableKey,
       name: raw.augmentName || base.name || String(id),
       desc: cleanDesc(raw.augmentDescription || base.desc || ''),
       tooltip: cleanDesc(raw.augmentDescription || base.tooltip || base.desc || ''),
@@ -270,7 +364,7 @@ function parseChampionAugmentJson(payload, champ, globalById, heroGames) {
         games: play
       }]
     })
-  }).filter(row => row.play >= minGames && !row.mechanicConflict)
+  }).filter(row => row.rarity && row.play >= minGames && !row.mechanicConflict)
     .sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score
       return b.play - a.play
@@ -306,13 +400,19 @@ function parseAugmentGuideDesc(html) {
 
 async function fetchMayhemTierList(force) {
   const now = Date.now()
-  if (!force && aramListCache && now - aramListAt < 30 * 60 * 1000) return aramListCache
+  const manifest = await fetchHexManifest(force)
+  if (!force && aramListCache && aramListBuildId === manifest.buildId && now - aramListAt < CACHE_TTL) {
+    return aramListCache
+  }
   if (aramListPending) return aramListPending
   aramListPending = (async () => {
     const html = await requestText(`${HEXDATA}/heroes`)
     const rows = parseHeroRows(html)
     if (!rows.length) throw new Error('Hexdata 英雄榜解析失败')
-    const info = parseHexdataMeta(html)
+    const htmlInfo = parseHexdataMeta(html)
+    if (htmlInfo.buildId && htmlInfo.buildId !== manifest.buildId) {
+      throw new Error('Hexdata 英雄榜与 manifest 构建不一致')
+    }
     const list = rows.map(row => ({
       championId: row.championId,
       slug: row.slug,
@@ -329,13 +429,17 @@ async function fetchMayhemTierList(force) {
       playText: formatNumber(row.play),
       kdaText: '-'
     }))
-    return { list, meta: info, patch: info.patch }
+    return { list, meta: manifest, patch: manifest.patch }
   })()
   try {
     const result = await aramListPending
     aramListCache = result
+    aramListBuildId = manifest.buildId
     aramListAt = Date.now()
     return result
+  } catch (e) {
+    if (aramListCache) return aramListCache
+    throw e
   } finally {
     aramListPending = null
   }
@@ -343,19 +447,35 @@ async function fetchMayhemTierList(force) {
 
 async function fetchAugments(force) {
   const now = Date.now()
-  if (!force && augmentsCache && now - augmentsAt < 30 * 60 * 1000) return augmentsCache
+  const manifest = await fetchHexManifest(force)
+  if (!force && augmentsCache && augmentsBuildId === manifest.buildId && now - augmentsAt < CACHE_TTL) {
+    return augmentsCache
+  }
   if (augmentsPending) return augmentsPending
   augmentsPending = (async () => {
     if (!championMap) await initStaticData()
-    const [html, pools, clientAugs, arenaRes] = await Promise.all([
+    const cdragon = await resolveCdragonSource(manifest.patch)
+    const [html, pools, clientAugs, arenaRes, queues] = await Promise.all([
       requestText(`${HEXDATA}/augments`),
-      request(`${CDRAGON}/plugins/rcp-be-lol-game-data/global/zh_cn/v1/augment-lists.json`),
-      request(`${CDRAGON}/plugins/rcp-be-lol-game-data/global/zh_cn/v1/cherry-augments.json`),
-      request(`${CDRAGON}/cdragon/arena/zh_cn.json`).catch(() => ({ augments: [] }))
+      request(`${cdragon.base}/plugins/rcp-be-lol-game-data/global/zh_cn/v1/augment-lists.json`),
+      request(`${cdragon.base}/plugins/rcp-be-lol-game-data/global/zh_cn/v1/cherry-augments.json`),
+      request(`${cdragon.base}/cdragon/arena/zh_cn.json`).catch(() => ({ augments: [] })),
+      request(`${cdragon.base}/plugins/rcp-be-lol-game-data/global/default/v1/queues.json`)
     ])
     const stats = parseAugmentRows(html)
     if (!stats.length) throw new Error('Hexdata 强化榜解析失败')
+    const htmlInfo = parseHexdataMeta(html)
+    if (htmlInfo.buildId && htmlInfo.buildId !== manifest.buildId) {
+      throw new Error('Hexdata 强化榜与 manifest 构建不一致')
+    }
+    const queue = (queues || []).find(x => Number(x.id) === 2400)
+    if (!queue || queue.gameSelectModeGroup !== 'kARAM' || !/ARAM:\s*Mayhem/i.test(queue.name || queue.description || '')) {
+      throw new Error('CommunityDragon Queue 2400 配置不兼容')
+    }
     const kiwi = (pools || []).find(x => x.modeName === 'KIWI')
+    if (!kiwi || !Array.isArray(kiwi.augmentList) || kiwi.augmentList.length < MIN_KIWI_POOL_SIZE) {
+      throw new Error('CommunityDragon KIWI 强化池缺失或数量异常')
+    }
     const poolKeys = {}
     ;((kiwi && kiwi.augmentList) || []).forEach(path => {
       poolKeys[String(path).split('/').pop().toLowerCase()] = true
@@ -372,15 +492,14 @@ async function fetchAugments(force) {
     ;((arenaRes && arenaRes.augments) || []).forEach(a => {
       arenaByName[String(a.name || '').trim()] = a
     })
-    const info = parseHexdataMeta(html)
     const list = stats.map((stat, index) => {
       const client = clientById[stat.id] || clientByName[stat.name] || {}
       const arena = arenaByName[stat.name] || {}
       const rarity = rarityFromClient(client.rarity)
       const rInfo = rarityInfo(rarity)
-      const smallIcon = cdragonIcon(client.augmentSmallIconPath)
+      const smallIcon = cdragonIcon(cdragon.base, client.augmentSmallIconPath)
       const desc = cleanDesc(arena.desc || arena.tooltip || '')
-      const globalTier = index < 10 ? 1 : index < 35 ? 2 : index < 85 ? 3 : index < 145 ? 4 : 5
+      const globalTier = tierFromRank(index, stats.length)
       return {
         id: stat.id,
         key: client.augmentNameId || stat.slug || String(stat.id),
@@ -404,18 +523,30 @@ async function fetchAugments(force) {
         popText: '-',
         tierText: tierLabel(globalTier),
         tierClass: tierClass(globalTier),
-        source: info.source,
-        dataDate: info.dataDate
+        source: manifest.source,
+        patch: manifest.patch,
+        dataDate: manifest.dataDate,
+        buildId: manifest.buildId,
+        cdragonVersion: cdragon.version,
+        rarityRaw: client.rarity || ''
       }
     })
-    return list.map(a => meta.enrichAugment(a, championMap))
+    const linked = list.filter(a => a.key && a.smallIcon && a.rarity).length
+    if (linked / stats.length < MIN_AUGMENT_LINK_RATE) {
+      throw new Error(`强化静态资源关联率过低: ${linked}/${stats.length}`)
+    }
+    return list.filter(a => a.rarity).map(a => meta.enrichAugment(a, championMap))
   })()
   try {
     const result = await augmentsPending
     if (!result.length) throw new Error('国服强化数据为空')
     augmentsCache = result
+    augmentsBuildId = manifest.buildId
     augmentsAt = Date.now()
     return result
+  } catch (e) {
+    if (augmentsCache) return augmentsCache
+    throw e
   } finally {
     augmentsPending = null
   }
@@ -563,6 +694,10 @@ async function getChampionAugments(championKeyOrId, force) {
   let championAugments = []
   try {
     const payload = await request(`${HEXDATA}/data/heroes/${champ.key}.json`, { timeout: 30000 })
+    const confirmedManifest = await fetchHexManifest(true)
+    if (confirmedManifest.buildId !== tier.meta.buildId) {
+      throw new Error('Hexdata 英雄详情读取期间构建已更新')
+    }
     championAugments = parseChampionAugmentJson(payload, champ, globalById, stats && stats.play)
       .map(a => meta.enrichAugment(a, championMap))
   } catch (e) {
@@ -572,7 +707,7 @@ async function getChampionAugments(championKeyOrId, force) {
   return {
     version: cachedVersion,
     patch: tier.patch || cachedVersion,
-    source: 'Hexdata 艾欧尼亚 Queue 2400 样本',
+    source: 'Hexdata 国服 Queue 2400 样本',
     champion: champ,
     stats: stats ? meta.enrichChampion(Object.assign({}, champ, stats)) : null,
     suited: plan.suited,
@@ -653,7 +788,7 @@ async function getAugmentDetail(keyOrId, force) {
 
 async function getItems(force) {
   const now = Date.now()
-  if (!force && itemsCache && now - itemsAt < 30 * 60 * 1000) return itemsCache
+  if (!force && itemsCache && now - itemsAt < CACHE_TTL) return itemsCache
   if (itemsPending) return itemsPending
   itemsPending = (async () => {
     const version = cachedVersion || await getLatestVersion(force)

@@ -1,8 +1,7 @@
 <view class="page">
   <view class="header">
     <view class="header-title">海克斯大乱斗</view>
-    <view class="header-sub" wx:if="{{patch}}">版本 {{patch}} · 强化 / 英雄 / 装备</view>
-    <view class="header-sub" wx:else>强化 · 英雄 · 装备查询</view>
+    <view class="header-sub">强化 · 英雄 · 装备查询</view>
     <view class="stats" wx:if="{{summary}}">
       <view class="stat"><text class="n">{{summary.heroes}}</text><text class="l">英雄</text></view>
       <view class="stat"><text class="n c2">{{summary.augments}}</text><text class="l">强化</text></view>
@@ -211,5 +210,4 @@
     </view>
   </block>
 
-  <view class="foot">国服统计 Hexdata 艾欧尼亚样本 · 静态资源 Data Dragon / CommunityDragon · 非官方</view>
 </view>
