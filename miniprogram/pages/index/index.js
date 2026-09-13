@@ -1,5 +1,6 @@
 const api = require('../../utils/api')
 const { debounce } = require('../../utils/util')
+const backTop = require('../../behaviors/back-top')
 
 const MAIN_TABS = [
   { key: 'heroes', label: '英雄' },
@@ -16,6 +17,7 @@ const PLACEHOLDERS = {
 }
 
 Page({
+  behaviors: [backTop],
   data: {
     loading: true,
     summary: null,

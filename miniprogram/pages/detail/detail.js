@@ -1,7 +1,9 @@
 const api = require('../../utils/api')
 const { formatPercent, tierLabel, tierClass } = require('../../utils/util')
+const backTop = require('../../behaviors/back-top')
 
 Page({
+  behaviors: [backTop],
   data: {
     loading: true,
     champion: null,

@@ -291,7 +291,7 @@ function parseHeroRows(html) {
 
 function parseAugmentRows(html) {
   const list = []
-  const re = /<tr><td><a href="\/augment\/(\d+)-([^"]+)">([^<]+)<\/a><\/td><td>globalHexScore\s*([0-9.]+)\s*·\s*胜率\s*([0-9.]+)%/g
+  const re = /<tr><td><a href="\/augment\/(\d+)-([^"]+)">([^<]+)<\/a><\/td><td>(?:globalHexScore|综合评分)\s*([0-9.]+)\s*·\s*胜率\s*([0-9.]+)%/g
   let m
   while ((m = re.exec(String(html || '')))) {
     list.push({
@@ -369,6 +369,30 @@ function parseChampionAugmentJson(payload, champ, globalById, heroGames) {
       if (b.score !== a.score) return b.score - a.score
       return b.play - a.play
     })
+}
+
+function heroPublicPath(champ, stats) {
+  const slug = (stats && stats.slug) || String((champ && champ.id) || '').toLowerCase()
+  return `/hero/${champ.key}-${slug}`
+}
+
+function parseChampionAugmentTable(html, heroGames) {
+  const list = []
+  const re = /<tr><td><a href="\/augment\/(\d+)-([^"]+)">([^<]+)<\/a><\/td><td>([0-9.]+)<\/td><td>([0-9.]+)%<\/td><td>([0-9,]+)<\/td><\/tr>/g
+  let m
+  while ((m = re.exec(String(html || '')))) {
+    const games = parseNumber(m[6])
+    list.push({
+      augmentId: Number(m[1]),
+      slug: m[2],
+      augmentName: decodeHtml(m[3]),
+      hexScore: parseNumber(m[4]),
+      pairWinRate: parseNumber(m[5]) / 100,
+      games,
+      pickRate: heroGames ? games / heroGames : 0
+    })
+  }
+  return list
 }
 
 function parseAugmentHeroes(html) {
@@ -692,16 +716,36 @@ async function getChampionAugments(championKeyOrId, force) {
   const globalById = {}
   augments.forEach(a => { globalById[Number(a.id)] = a })
   let championAugments = []
+  const heroPath = heroPublicPath(champ, stats)
   try {
-    const payload = await request(`${HEXDATA}/data/heroes/${champ.key}.json`, { timeout: 30000 })
+    const payload = await request(`${HEXDATA}/data/heroes/${champ.key}.json`, {
+      timeout: 30000,
+      header: { Referer: `${HEXDATA}${heroPath}` }
+    })
     const confirmedManifest = await fetchHexManifest(true)
     if (confirmedManifest.buildId !== tier.meta.buildId) {
       throw new Error('Hexdata 英雄详情读取期间构建已更新')
+    }
+    if (!payload || !Array.isArray(payload.augments) || !payload.augments.length) {
+      throw new Error('Hexdata 英雄详情为空')
     }
     championAugments = parseChampionAugmentJson(payload, champ, globalById, stats && stats.play)
       .map(a => meta.enrichAugment(a, championMap))
   } catch (e) {
     console.error('Hexdata champion detail failed', champ.key, e)
+    try {
+      const html = await requestText(`${HEXDATA}${heroPath}`)
+      const htmlInfo = parseHexdataMeta(html)
+      if (htmlInfo.buildId && htmlInfo.buildId !== tier.meta.buildId) {
+        throw new Error('Hexdata 英雄页与 manifest 构建不一致')
+      }
+      const rows = parseChampionAugmentTable(html, stats && stats.play)
+      if (!rows.length) throw new Error('Hexdata 英雄公开页解析失败')
+      championAugments = parseChampionAugmentJson({ augments: rows }, champ, globalById, stats && stats.play)
+        .map(a => meta.enrichAugment(a, championMap))
+    } catch (e2) {
+      console.error('Hexdata champion html fallback failed', champ.key, e2)
+    }
   }
   const plan = buildChampionAugmentPlan(championAugments, champ.key)
   return {
@@ -850,7 +894,21 @@ async function getGeneralLoadouts(force) {
 }
 
 async function getHomeSummary(force) {
-  const [champs, augs] = await Promise.all([getMayhemChampions(force), getAugmentTierList(force)])
+  const [champsRes, augsRes] = await Promise.allSettled([
+    getMayhemChampions(force),
+    getAugmentTierList(force)
+  ])
+  if (champsRes.status !== 'fulfilled' && augsRes.status !== 'fulfilled') {
+    throw (champsRes.reason || augsRes.reason || new Error('首页数据加载失败'))
+  }
+  const champs = champsRes.status === 'fulfilled'
+    ? champsRes.value
+    : { patch: '', version: cachedVersion, meta: null, list: [], stats: { heroes: 0, sss: 0, ss: 0, builds: 0 } }
+  const augs = augsRes.status === 'fulfilled'
+    ? augsRes.value
+    : { list: [], stats: { total: 0, core: 0, special: 0, trap: 0 } }
+  if (champsRes.status !== 'fulfilled') console.error('heroes load failed', champsRes.reason)
+  if (augsRes.status !== 'fulfilled') console.error('augments load failed', augsRes.reason)
   return {
     patch: champs.patch,
     version: champs.version,

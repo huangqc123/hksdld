@@ -1,6 +1,8 @@
 const api = require('../../utils/api')
+const backTop = require('../../behaviors/back-top')
 
 Page({
+  behaviors: [backTop],
   data: {
     loading: true,
     aug: null,

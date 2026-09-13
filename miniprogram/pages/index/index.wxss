@@ -318,6 +318,10 @@
   font-size: 20rpx;
   color: #c8aa6e;
 }
+.load .h-scroll,
+.load .h-scroll-inner {
+  height: 148rpx;
+}
 .la {
   display: inline-block;
   vertical-align: top;

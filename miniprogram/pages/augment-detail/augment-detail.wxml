@@ -68,4 +68,5 @@
       </view>
     </view>
   </block>
+  <back-top show="{{showBackTop}}" />
 </view>

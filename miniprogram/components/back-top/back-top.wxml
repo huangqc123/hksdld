@@ -1,0 +1,1 @@
+<view class="back-top {{show ? 'on' : ''}}" bindtap="onTap" hover-class="press">顶部</view>

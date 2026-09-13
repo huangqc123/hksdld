@@ -1,7 +1,9 @@
 const api = require('../../utils/api')
 const { debounce } = require('../../utils/util')
+const backTop = require('../../behaviors/back-top')
 
 Page({
+  behaviors: [backTop],
   data: {
     loading: true,
     keyword: '',
