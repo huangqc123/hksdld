@@ -34,3 +34,25 @@ https://ddragon.leagueoflegends.com
 https://hexdata.com.cn
 https://raw.communitydragon.org
 ```
+
+request 与 downloadFile 都要配上述三个域名。真机预览约 10 分钟后生效。
+
+## 首屏加载策略
+
+首屏只保证「英雄」可交互，不改变现有布局。强化、搭配、装备不得阻塞首页。
+
+启动顺序：
+
+1. `app.js` 并行 `initStaticData` 与 `getMayhemChampions`（英雄榜 HTML 与 Data Dragon 静态资料同时拉）。
+2. 首页拿到英雄列表后立刻 `setData` 并结束 loading。
+3. 强化榜在后台 `ensureAugs`；点「强化 / 搭配 / 装备」时若尚未缓存再请求。
+4. 英雄宫格先渲染前 40 个，其余下一帧补齐，避免一次 setData 173 条卡住首屏。
+
+请求层：
+
+- Data Dragon 的 `versions.json` / `champion.json` / `item.json` 以及 CommunityDragon 静态 JSON 开 `enableCache`。
+- Hexdata 英雄榜、强化榜与 manifest 并行，不再先等 manifest 再下 HTML。
+- 不再下载体积很大的 `queues.json`；KIWI 池数量和强化关联率仍作校验。
+- 启动时不预拉强化。装备、搭配只在进入对应 Tab 时加载。
+
+后续改首页时保持：英雄可先出；统计栏数字可稍后填入；不要把 `getHomeSummary` 重新改成等强化返回才结束 loading。

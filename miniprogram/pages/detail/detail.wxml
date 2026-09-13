@@ -119,5 +119,5 @@
     </view>
     <view class="empty-wrap sm" wx:else>该分类下暂无数据</view>
   </block>
-  <back-top show="{{showBackTop}}" />
+  <back-top visible="{{showBackTop}}" />
 </view>

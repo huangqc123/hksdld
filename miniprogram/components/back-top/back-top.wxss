@@ -1,28 +1,19 @@
 .back-top {
   position: fixed;
   right: 28rpx;
-  bottom: calc(48rpx + env(safe-area-inset-bottom));
-  z-index: 200;
-  width: 88rpx;
-  height: 88rpx;
+  bottom: calc(120rpx + env(safe-area-inset-bottom));
+  z-index: 9999;
+  width: 96rpx;
+  height: 96rpx;
   border-radius: 50%;
-  background: rgba(12, 20, 38, 0.94);
-  border: 1rpx solid rgba(200, 170, 110, 0.5);
+  background: #1a2744;
+  border: 2rpx solid #c8aa6e;
   color: #c8aa6e;
-  font-size: 22rpx;
+  font-size: 24rpx;
   font-weight: 700;
-  line-height: 88rpx;
+  line-height: 96rpx;
   text-align: center;
-  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.4);
-  opacity: 0;
-  transform: translateY(16rpx);
-  pointer-events: none;
-  transition: opacity 0.18s ease, transform 0.18s ease;
-}
-.back-top.on {
-  opacity: 1;
-  transform: translateY(0);
-  pointer-events: auto;
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.45);
 }
 .press {
   opacity: 0.75;

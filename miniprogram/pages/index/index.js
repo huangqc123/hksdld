@@ -58,6 +58,11 @@ Page({
     this.bootstrap()
   },
 
+  onPageScroll(e) {
+    const show = (e.scrollTop || 0) > 240
+    if (show !== this.data.showBackTop) this.setData({ showBackTop: show })
+  },
+
   onPullDownRefresh() {
     this.bootstrap(true).finally(() => wx.stopPullDownRefresh())
   },
@@ -68,35 +73,55 @@ Page({
       const app = getApp()
       if (force) await app.startBootstrap(true)
       else await app.ensureReady()
-      const home = await api.getHomeSummary(force)
-      this._allHeroes = home.champions || []
-      this._allAugs = home.augments || []
-
-      Promise.all([
-        api.getItems(force).catch(() => ({ list: [], cats: [] })),
-        api.getGeneralLoadouts(force).catch(() => ({ loadouts: [] }))
-      ]).then(([itemsRes, loadRes]) => {
-        this._allItems = itemsRes.list || []
-        this._allLoadouts = loadRes.loadouts || []
-        this.setData({
-          itemCats: itemsRes.cats || [{ key: 'all', label: '全部' }],
-          loadoutCount: this._allLoadouts.length
-        })
-        if (this.data.mainTab === 'items') this.applyItems()
-        if (this.data.mainTab === 'loadouts') this.applyLoadouts()
-      })
-
+      const champs = await api.getMayhemChampions(force)
+      this._allHeroes = champs.list || []
+      if (force) {
+        this._allAugs = []
+        this._allItems = []
+        this._allLoadouts = []
+      }
+      const prev = this.data.summary || {}
       this.setData({
         loading: false,
-        summary: home.summary
+        summary: {
+          heroes: champs.stats.heroes,
+          augments: force ? 0 : (prev.augments || 0),
+          core: force ? 0 : (prev.core || 0),
+          special: force ? 0 : (prev.special || 0),
+          trap: force ? 0 : (prev.trap || 0),
+          sss: champs.stats.sss
+        }
       })
       this.applyHeroes()
-      this.applyAugs()
+      this.ensureAugs(force)
     } catch (e) {
       console.error(e)
       this.setData({ loading: false })
       wx.showToast({ title: '加载失败', icon: 'none' })
     }
+  },
+
+  ensureAugs(force) {
+    if (this._augsPending) return this._augsPending
+    if (!force && this._allAugs.length) return Promise.resolve()
+    this._augsPending = api.getAugmentTierList(force).then(augs => {
+      this._allAugs = augs.list || []
+      const s = this.data.summary || {}
+      this.setData({
+        summary: {
+          heroes: s.heroes || 0,
+          augments: augs.stats.total,
+          core: augs.stats.core,
+          special: augs.stats.special,
+          trap: augs.stats.trap,
+          sss: s.sss || 0
+        }
+      })
+      if (this.data.mainTab === 'augments') this.applyAugs()
+    }).catch(e => console.error(e)).finally(() => {
+      this._augsPending = null
+    })
+    return this._augsPending
   },
 
   onSearch(e) {
@@ -118,18 +143,19 @@ Page({
       augTag: ''
     })
     this.applyCurrent()
+    if (key === 'augments') this.ensureAugs()
     if (key === 'items' && !this._allItems.length) {
       api.getItems().then(res => {
         this._allItems = res.list || []
         this.setData({ itemCats: res.cats || [] })
         this.applyItems()
-      })
+      }).catch(() => {})
     }
     if (key === 'loadouts' && !this._allLoadouts.length) {
       api.getGeneralLoadouts().then(res => {
         this._allLoadouts = res.loadouts || []
         this.applyLoadouts()
-      })
+      }).catch(() => {})
     }
   },
 
@@ -174,13 +200,41 @@ Page({
       if (heroSort === 'play') return (b.play || 0) - (a.play || 0)
       return (a.rank || 999) - (b.rank || 999)
     })
-    list = list.map(item => {
+    const slim = list.map(item => {
       let metricText = item.winRateText
       if (heroSort === 'pickRate') metricText = item.pickRateText
       else if (heroSort === 'play') metricText = item.playText
-      return Object.assign({}, item, { metricText })
+      return {
+        id: item.id,
+        key: item.key,
+        name: item.name,
+        title: item.title,
+        icon: item.icon,
+        grade: item.grade,
+        gradeClass: item.gradeClass,
+        rank: item.rank,
+        roleLabel: item.roleLabel,
+        winRateText: item.winRateText,
+        pickRateText: item.pickRateText,
+        playText: item.playText,
+        metricText
+      }
     })
-    this.setData({ heroes: list, heroCount: list.length })
+    if (this._heroPaintTimer) {
+      clearTimeout(this._heroPaintTimer)
+      this._heroPaintTimer = null
+    }
+    const first = 40
+    if (slim.length > first && !kw && role === 'all') {
+      this.setData({ heroes: slim.slice(0, first), heroCount: slim.length })
+      this._heroPaintTimer = setTimeout(() => {
+        this._heroPaintTimer = null
+        if (this.data.mainTab !== 'heroes') return
+        this.setData({ heroes: slim })
+      }, 64)
+    } else {
+      this.setData({ heroes: slim, heroCount: slim.length })
+    }
   },
 
   onAugRarity(e) {

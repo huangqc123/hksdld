@@ -76,12 +76,32 @@ function stripHtml(s) {
 
 function cleanDesc(s) {
   return stripHtml(s)
-    .replace(/\{\{[^}]+\}\}/g, '指定效果')
-    .replace(/@[A-Za-z0-9_.*]+@/g, '对应数值')
+    .replace(/\{\{[^}]+\}\}/g, '')
+    .replace(/@[^@\s]{1,160}@/g, '')
+    .replace(/@[A-Za-z][\w.:*]{2,80}/g, '')
     .replace(/%i:[^%]+%/g, '')
+    .replace(/\(\s*\)/g, '')
+    .replace(/（\s*）/g, '')
     .replace(/[ \t]+\n/g, '\n')
     .replace(/\n{3,}/g, '\n\n')
     .replace(/[ \t]{2,}/g, ' ')
+    .replace(/获得%/g, '获得额外')
+    .replace(/造成%/g, '造成额外')
+    .replace(/至多至%/g, '有一定上限')
+    .replace(/提升至%/g, '获得提升')
+    .replace(/获得个/g, '获得')
+    .replace(/获得次/g, '获得')
+    .replace(/获得层/g, '获得')
+    .replace(/获得顶/g, '获得')
+    .replace(/戴着顶/g, '戴着')
+    .replace(/参与击杀次/g, '参与击杀')
+    .replace(/失效秒/g, '短暂失效')
+    .replace(/持续秒/g, '持续一段时间')
+    .replace(/降低额外的/g, '降低')
+    .replace(/%%/g, '%')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/ ，/g, '，')
+    .replace(/。+/g, '。')
     .trim()
 }
 
@@ -207,7 +227,7 @@ async function resolveCdragonSource(reportPatch) {
 
 async function getLatestVersion(force) {
   if (!force && cachedVersion) return cachedVersion
-  const list = await request(`${DDRAGON}/api/versions.json`)
+  const list = await request(`${DDRAGON}/api/versions.json`, { cache: true })
   cachedVersion = list[0]
   return cachedVersion
 }
@@ -218,11 +238,13 @@ async function initStaticData(force) {
   }
   if (staticDataPending) return staticDataPending
   staticDataPending = (async () => {
-    const [version, manifest] = await Promise.all([
-      getLatestVersion(force),
-      fetchHexManifest(force).catch(() => null)
+    const versionPromise = getLatestVersion(force)
+    const manifestPromise = fetchHexManifest(force).catch(() => null)
+    const version = await versionPromise
+    const [champRes, manifest] = await Promise.all([
+      request(`${DDRAGON}/cdn/${version}/data/zh_CN/champion.json`, { cache: true }),
+      manifestPromise
     ])
-    const champRes = await request(`${DDRAGON}/cdn/${version}/data/zh_CN/champion.json`)
     const remoteAliases = {}
     ;((manifest && manifest.heroAliases) || []).forEach(row => {
       remoteAliases[Number(row.id)] = row
@@ -424,13 +446,13 @@ function parseAugmentGuideDesc(html) {
 
 async function fetchMayhemTierList(force) {
   const now = Date.now()
-  const manifest = await fetchHexManifest(force)
-  if (!force && aramListCache && aramListBuildId === manifest.buildId && now - aramListAt < CACHE_TTL) {
-    return aramListCache
-  }
+  if (!force && aramListCache && now - aramListAt < CACHE_TTL) return aramListCache
   if (aramListPending) return aramListPending
   aramListPending = (async () => {
-    const html = await requestText(`${HEXDATA}/heroes`)
+    const [manifest, html] = await Promise.all([
+      fetchHexManifest(force),
+      requestText(`${HEXDATA}/heroes`)
+    ])
     const rows = parseHeroRows(html)
     if (!rows.length) throw new Error('Hexdata 英雄榜解析失败')
     const htmlInfo = parseHexdataMeta(html)
@@ -458,7 +480,7 @@ async function fetchMayhemTierList(force) {
   try {
     const result = await aramListPending
     aramListCache = result
-    aramListBuildId = manifest.buildId
+    aramListBuildId = result.meta && result.meta.buildId
     aramListAt = Date.now()
     return result
   } catch (e) {
@@ -471,30 +493,28 @@ async function fetchMayhemTierList(force) {
 
 async function fetchAugments(force) {
   const now = Date.now()
-  const manifest = await fetchHexManifest(force)
-  if (!force && augmentsCache && augmentsBuildId === manifest.buildId && now - augmentsAt < CACHE_TTL) {
-    return augmentsCache
-  }
+  if (!force && augmentsCache && now - augmentsAt < CACHE_TTL) return augmentsCache
   if (augmentsPending) return augmentsPending
   augmentsPending = (async () => {
     if (!championMap) await initStaticData()
-    const cdragon = await resolveCdragonSource(manifest.patch)
-    const [html, pools, clientAugs, arenaRes, queues] = await Promise.all([
+    const [manifest, html, jsonList] = await Promise.all([
+      fetchHexManifest(force),
       requestText(`${HEXDATA}/augments`),
-      request(`${cdragon.base}/plugins/rcp-be-lol-game-data/global/zh_cn/v1/augment-lists.json`),
-      request(`${cdragon.base}/plugins/rcp-be-lol-game-data/global/zh_cn/v1/cherry-augments.json`),
-      request(`${cdragon.base}/cdragon/arena/zh_cn.json`).catch(() => ({ augments: [] })),
-      request(`${cdragon.base}/plugins/rcp-be-lol-game-data/global/default/v1/queues.json`)
+      request(`${HEXDATA}/data/augments.json`, {
+        header: { Referer: `${HEXDATA}/augments` }
+      }).catch(() => [])
+    ])
+    const cdragon = await resolveCdragonSource(manifest.patch)
+    const [pools, clientAugs, arenaRes] = await Promise.all([
+      request(`${cdragon.base}/plugins/rcp-be-lol-game-data/global/zh_cn/v1/augment-lists.json`, { cache: true }),
+      request(`${cdragon.base}/plugins/rcp-be-lol-game-data/global/zh_cn/v1/cherry-augments.json`, { cache: true }),
+      request(`${cdragon.base}/cdragon/arena/zh_cn.json`, { cache: true }).catch(() => ({ augments: [] }))
     ])
     const stats = parseAugmentRows(html)
     if (!stats.length) throw new Error('Hexdata 强化榜解析失败')
     const htmlInfo = parseHexdataMeta(html)
     if (htmlInfo.buildId && htmlInfo.buildId !== manifest.buildId) {
       throw new Error('Hexdata 强化榜与 manifest 构建不一致')
-    }
-    const queue = (queues || []).find(x => Number(x.id) === 2400)
-    if (!queue || queue.gameSelectModeGroup !== 'kARAM' || !/ARAM:\s*Mayhem/i.test(queue.name || queue.description || '')) {
-      throw new Error('CommunityDragon Queue 2400 配置不兼容')
     }
     const kiwi = (pools || []).find(x => x.modeName === 'KIWI')
     if (!kiwi || !Array.isArray(kiwi.augmentList) || kiwi.augmentList.length < MIN_KIWI_POOL_SIZE) {
@@ -516,14 +536,21 @@ async function fetchAugments(force) {
     ;((arenaRes && arenaRes.augments) || []).forEach(a => {
       arenaByName[String(a.name || '').trim()] = a
     })
+    const jsonById = {}
+    ;(Array.isArray(jsonList) ? jsonList : []).forEach(row => {
+      jsonById[Number(row.id)] = row
+    })
     const list = stats.map((stat, index) => {
+      const extra = jsonById[stat.id] || {}
       const client = clientById[stat.id] || clientByName[stat.name] || {}
       const arena = arenaByName[stat.name] || {}
-      const rarity = rarityFromClient(client.rarity)
+      const rarity = rarityFromClient(client.rarity) || rarityFromHexdata(extra.rarity)
       const rInfo = rarityInfo(rarity)
-      const smallIcon = cdragonIcon(cdragon.base, client.augmentSmallIconPath)
-      const desc = cleanDesc(arena.desc || arena.tooltip || '')
-      const globalTier = tierFromRank(index, stats.length)
+      const smallIcon = cdragonIcon(cdragon.base, client.augmentSmallIconPath) || absoluteUrl(HEXDATA, extra.iconUrl)
+      const desc = cleanDesc(extra.description || arena.desc || arena.tooltip || '')
+      const pickRate = Number(extra.pickRate) || 0
+      const play = Number(extra.games) || 0
+      const globalTier = Number(extra.tier) || tierFromRank(index, stats.length)
       return {
         id: stat.id,
         key: client.augmentNameId || stat.slug || String(stat.id),
@@ -536,15 +563,19 @@ async function fetchAugments(force) {
         rarityKey: rInfo.key,
         rarityColor: rInfo.color,
         desc: desc || '当前国服统计已收录，效果说明等待静态资源补全。',
-        tooltip: cleanDesc(arena.tooltip || arena.desc || '') || desc,
+        tooltip: cleanDesc(extra.description || arena.tooltip || arena.desc || '') || desc,
         champions: [],
         globalTier,
         avgPerf: stat.score,
-        avgPop: 0,
+        avgPop: pickRate,
+        pickRate,
+        play,
+        playText: play ? formatNumber(play) : '',
+        pickRateText: pickRate ? formatPercent(pickRate) : '',
         winRate: stat.winRate,
         winRateText: formatPercent(stat.winRate),
         perfText: stat.score.toFixed(1),
-        popText: '-',
+        popText: pickRate ? formatPercent(pickRate) : '',
         tierText: tierLabel(globalTier),
         tierClass: tierClass(globalTier),
         source: manifest.source,
@@ -565,7 +596,7 @@ async function fetchAugments(force) {
     const result = await augmentsPending
     if (!result.length) throw new Error('国服强化数据为空')
     augmentsCache = result
-    augmentsBuildId = manifest.buildId
+    augmentsBuildId = (result[0] && result[0].buildId) || ''
     augmentsAt = Date.now()
     return result
   } catch (e) {
@@ -577,8 +608,10 @@ async function fetchAugments(force) {
 }
 
 async function getMayhemChampions(force) {
-  if (!cachedChampions) await initStaticData(force)
-  const aram = await fetchMayhemTierList(force)
+  const [, aram] = await Promise.all([
+    initStaticData(force),
+    fetchMayhemTierList(force)
+  ])
   const merged = aram.list.map(row => {
     const c = championMap[row.championId]
     return c ? meta.enrichChampion(Object.assign({}, c, row)) : null
@@ -836,7 +869,7 @@ async function getItems(force) {
   if (itemsPending) return itemsPending
   itemsPending = (async () => {
     const version = cachedVersion || await getLatestVersion(force)
-    const res = await request(`${DDRAGON}/cdn/${version}/data/zh_CN/item.json`)
+    const res = await request(`${DDRAGON}/cdn/${version}/data/zh_CN/item.json`, { cache: true })
     const data = res.data || {}
     const list = []
     Object.keys(data).forEach(id => {

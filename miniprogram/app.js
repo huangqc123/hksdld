@@ -22,13 +22,14 @@ App({
 
   async bootstrap(force) {
     try {
-      const base = await api.initStaticData(force)
+      const [base] = await Promise.all([
+        api.initStaticData(force),
+        api.getMayhemChampions(force)
+      ])
       this.globalData.version = base.version
       this.globalData.champions = base.champions
       this.globalData.championMap = base.championMap
       this.globalData.ready = true
-      // 预拉取强化数据
-      api.fetchAugments().catch(() => {})
       return base
     } catch (e) {
       console.error('bootstrap failed', e)

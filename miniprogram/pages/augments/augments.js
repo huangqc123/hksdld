@@ -22,6 +22,11 @@ Page({
     this.loadData()
   },
 
+  onPageScroll(e) {
+    const show = (e.scrollTop || 0) > 240
+    if (show !== this.data.showBackTop) this.setData({ showBackTop: show })
+  },
+
   onPullDownRefresh() {
     this.loadData(true).finally(() => wx.stopPullDownRefresh())
   },

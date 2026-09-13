@@ -4,7 +4,7 @@ module.exports = Behavior({
   },
   methods: {
     onPageScroll(e) {
-      const show = (e.scrollTop || 0) > 400
+      const show = (e.scrollTop || 0) > 240
       if (show !== this.data.showBackTop) this.setData({ showBackTop: show })
     }
   }

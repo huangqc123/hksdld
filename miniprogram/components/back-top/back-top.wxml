@@ -1,1 +1,1 @@
-<view class="back-top {{show ? 'on' : ''}}" bindtap="onTap" hover-class="press">顶部</view>
+<view wx:if="{{visible}}" class="back-top" bindtap="onTap" hover-class="press">顶部</view>

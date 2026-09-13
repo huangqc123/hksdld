@@ -1,6 +1,6 @@
 function request(url, options = {}) {
   return new Promise((resolve, reject) => {
-    wx.request({
+    const req = {
       url,
       method: options.method || 'GET',
       data: options.data,
@@ -8,6 +8,7 @@ function request(url, options = {}) {
         'Accept': 'application/json,text/html,*/*'
       }, options.header || {}),
       timeout: options.timeout || 20000,
+      enableHttp2: true,
       success(res) {
         if (res.statusCode >= 200 && res.statusCode < 300) {
           resolve(res.data)
@@ -18,7 +19,9 @@ function request(url, options = {}) {
       fail(err) {
         reject(err)
       }
-    })
+    }
+    if (options.cache) req.enableCache = true
+    wx.request(req)
   })
 }
 
@@ -32,6 +35,7 @@ function requestText(url) {
         'Accept': 'text/html,application/xhtml+xml,*/*'
       },
       timeout: 25000,
+      enableHttp2: true,
       success(res) {
         if (res.statusCode >= 200 && res.statusCode < 300) {
           resolve(typeof res.data === 'string' ? res.data : String(res.data || ''))

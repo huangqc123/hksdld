@@ -144,7 +144,8 @@
           <view class="a-desc">{{item.desc}}</view>
           <view class="a-meta">
             <text class="a-perf">胜率 {{item.winRateText || item.perfText}}</text>
-            <text>登场 {{item.pickRateText || item.popText}}</text>
+            <text wx:if="{{item.pickRateText}}">登场 {{item.pickRateText}}</text>
+            <text wx:else>评分 {{item.perfText}}</text>
           </view>
         </view>
       </view>
@@ -210,5 +211,5 @@
     </view>
   </block>
 
-  <back-top show="{{showBackTop}}" />
+  <back-top visible="{{showBackTop}}" />
 </view>

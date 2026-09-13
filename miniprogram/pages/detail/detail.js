@@ -32,6 +32,11 @@ Page({
     this.bootstrap()
   },
 
+  onPageScroll(e) {
+    const show = (e.scrollTop || 0) > 240
+    if (show !== this.data.showBackTop) this.setData({ showBackTop: show })
+  },
+
   async bootstrap(force) {
     this.setData({ loading: true })
     try {

@@ -1,6 +1,6 @@
 Component({
   properties: {
-    show: {
+    visible: {
       type: Boolean,
       value: false
     }
